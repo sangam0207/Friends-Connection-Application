@@ -1,8 +1,4 @@
-
-
-
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,47 +13,50 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { useTokenStore } from "@/store";
 import { useNavigate } from "react-router-dom";
-import {IoMdNotifications} from 'react-icons/io'
+import { IoMdNotifications } from "react-icons/io";
 import { ProfileDropdownSkeleton } from "../loaders/ProfileDropDownLoader";
-import { useEffect } from "react";
 import { io } from "socket.io-client";
 import { useUserStore } from "@/store";
-import { Toaster } from "../ui/sonner";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 export function ProfileDropdown() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const{count,setCount}=useUserStore();
+  const { count, setCount } = useUserStore();
   const { token } = useTokenStore();
-  const {
-    data: userProfile,
-    isLoading,
-    isError,
-  } = useGetProfile({
-    enabled: !!token,
-  });
+  const { data: userProfile, isLoading } = useGetProfile({ enabled: !!token });
+  const socket = io(import.meta.env.VITE_API_BASE_URL);
 
   const handleSignOut = () => {
     signOut();
   };
-  const socket = io(import.meta.env.VITE_API_BASE_URL);
 
-  
-    useEffect(() => {
+  useEffect(() => {
+    if (userProfile?.data?.data?._id) {
       socket.emit("join", userProfile?.data?.data._id);
-  
+
       socket.on("friend-request-received", (data) => {
         console.log("Friend request received:", data);
-        setCount(data.totalRequest)
-        alert(`New Friend Request from ${data.senderName}`)
+        setCount(data.totalRequest);
+        const audio = new Audio("/img/notification.wav"); 
+        audio.play();
+        toast.info(`New Friend Request from ${data.senderName}`, {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "light",
+        });
       });
-  
-      return () => {
-        socket.disconnect();
-      };
-    }, [userProfile?.data?.data._id]);
-  
-    
+    }
 
+    return () => {
+      socket.disconnect();
+    };
+  }, [userProfile?.data?.data?._id]);
 
   if (isLoading) {
     return <ProfileDropdownSkeleton />;
@@ -67,25 +66,29 @@ export function ProfileDropdown() {
 
   return (
     <>
-     <div className="mr-[-14px]" style={{ position: 'relative', display: 'inline-block' }} onClick={()=>navigate('/friend-request')}>
-      <IoMdNotifications size={36} />
-       {count > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: -5,
-            right: -5,
-            backgroundColor: 'red',
-            color: 'white',
-            borderRadius: '50%',
-            padding: '2px 6px',
-            fontSize: '12px',
-          }}
-        >
-          {count}
-        </div>
-      )}
-    </div>
+      <div
+        className="mr-[-14px]"
+        style={{ position: "relative", display: "inline-block" }}
+        onClick={() => navigate("/friend-request")}
+      >
+        <IoMdNotifications size={36} />
+        {count > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -5,
+              backgroundColor: "red",
+              color: "white",
+              borderRadius: "50%",
+              padding: "2px 6px",
+              fontSize: "12px",
+            }}
+          >
+            {count}
+          </div>
+        )}
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -125,7 +128,7 @@ export function ProfileDropdown() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ToastContainer />
     </>
   );
 }
-
